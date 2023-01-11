@@ -20,7 +20,7 @@ class BotService:
         return response.json()
 
     def add_new_order(self, data=dict) -> dict:
-        response = requests.post(f"{self.base_url}order/", data)
+        response = requests.post(f"{self.base_url}order/", json=data)
         response.raise_for_status()
         return response.json()
 

@@ -104,8 +104,8 @@ async def display_menu(callback: types.CallbackQuery, state: FSMContext):
     button = types.InlineKeyboardMarkup(row_width=1)
 
     for menu in menu_response:
-        button.row(types.InlineKeyboardButton(f"{menu['position_name']} {menu['price']}",
-                                              callback_data=f"get_position:{menu['id']}"))
+        button.row(types.InlineKeyboardButton(f"{menu['position_name']} : {menu['price']}",
+                                              callback_data=f"get_position:{menu['position_id']}"))
 
     button.add(types.InlineKeyboardButton("Вернуться в начало", callback_data="return"))
     await state.set_state(CoffeeState.position)
@@ -116,17 +116,23 @@ async def display_menu(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query_handler(Text(contains='get_position'), state=CoffeeState.position)
 async def display_position(callback: types.CallbackQuery, state: FSMContext):
     position_id = int(callback.data.split(':')[-1])
-    position_name = bot_service.get_position(position_id)['position_name']
+    posit = bot_service.get_position(position_id)
 
-    await state.update_data(position_name=position_name)
-    await state.set_state(CoffeeState.qty)
+    position = [
+        {'position_id': posit['position_id']},
+        {'position_name': posit['position_name']},
+        {'qty': posit['qty']},
+    ]
+
+    await state.update_data(positions=position)
+    await state.set_state(CoffeeState.position)
     await callback.answer('Введите колличество', show_alert=True)
     await callback.message.delete()
 
 
-@dp.message_handler(state=CoffeeState.qty)
+@dp.message_handler(state=CoffeeState.position)
 async def choose_qty(msg: types.Message, state: FSMContext):
-    await state.update_data(qty=msg.text)
+#    await state.update_data(qty=int(msg.text))
     await state.set_state(CoffeeState.menu)
 
     button = types.InlineKeyboardMarkup(row_width=1)
@@ -150,8 +156,8 @@ async def total_bill(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer(f"Имя: {data['client_name']}\n"
                      f"Коментарий: {data['comment']}\n"
                      f"Доставка: {data['delivery']}\n"
-                     f"Позиция: {data['position_name']}\n"
-                     f"Колличество: {data['qty']}")
+                     f"Позиция: {data['positions']}\n")
+#                    f"Колличество: {data['qty']}")
     await bot_service.add_new_order(data)
     await callback.message.delete()
     await state.finish()
