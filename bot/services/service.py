@@ -19,8 +19,13 @@ class BotService:
         response.raise_for_status()
         return response.json()
 
-    def add_new_order(self, data=dict) -> dict:
-        response = requests.post(f"{self.base_url}order/", json=data)
+    def get_qty_p(self):
+        response = requests.get(f'{self.base_url}position/get_qty_p/')
+        response.raise_for_status()
+        return response.json()
+
+    def add_new_order(self, dt: dict) -> dict:
+        response = requests.post(f"{self.base_url}order/", json=dt)
         response.raise_for_status()
         return response.json()
 

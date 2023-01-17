@@ -110,7 +110,6 @@ async def display_menu(callback: types.CallbackQuery, state: FSMContext):
     button.add(types.InlineKeyboardButton("Вернуться в начало", callback_data="return"))
     await state.set_state(CoffeeState.position)
     await callback.message.edit_text('Выбирайте:', reply_markup=button)
-    await callback.answer('Меню')
 
 
 @dp.callback_query_handler(Text(contains='get_position'), state=CoffeeState.position)
@@ -118,23 +117,36 @@ async def display_position(callback: types.CallbackQuery, state: FSMContext):
     position_id = int(callback.data.split(':')[-1])
     posit = bot_service.get_position(position_id)
 
-    position = [
-        {'position_id': posit['position_id']},
-        {'position_name': posit['position_name']},
-        {'qty': posit['qty']},
-    ]
+    position_id = posit['position_id']
+    position_name = posit['position_name']
 
-    await state.update_data(positions=position)
-    await state.set_state(CoffeeState.position)
-    await callback.answer('Введите колличество', show_alert=True)
+#    position = [{'position_id': posit['position_id']}]
+
+#     position = [
+#         {'position_id': posit['position_id'],
+# #        {'position_name': posit['position_name']},
+#          'qty': posit['qty']}
+#     ]
+
+    await state.update_data(position_id=position_id, position_name=position_name)
+    await state.set_state(CoffeeState.res)
+    await callback.message.answer('Введите колличество')
     await callback.message.delete()
 
 
-@dp.message_handler(state=CoffeeState.position)
+@dp.message_handler(state=CoffeeState.res)
 async def choose_qty(msg: types.Message, state: FSMContext):
-#    await state.update_data(qty=int(msg.text))
-    await state.set_state(CoffeeState.menu)
+    await state.update_data(qty=int(msg.text))
 
+    # async with state.proxy() as data:
+    #     data['qty'] = msg.text
+    #
+    # async with state.proxy() as data:
+    #     positions = [{'position_id': data['position_id'],
+    #                   'qty': data['qty']}]
+    # await state.update_data(positions=positions)
+
+    await state.set_state(CoffeeState.res)
     button = types.InlineKeyboardMarkup(row_width=1)
     button .add(types.InlineKeyboardButton('Добавить в заказ', callback_data='menu'))
     button .add(types.InlineKeyboardButton('Сформировать заказ', callback_data='make_order'))
@@ -142,23 +154,32 @@ async def choose_qty(msg: types.Message, state: FSMContext):
     await msg.answer('Добавить или Сформировать', reply_markup=button)
 
 
-@dp.callback_query_handler(Text(contains='menu'), state=CoffeeState.menu)
-async def add_position(callback: types.CallbackQuery, state: FSMContext):
+# @dp.callback_query_handler(Text(contains='menu'), state=CoffeeState.menu)
+# async def add_position(callback: types.CallbackQuery, state: FSMContext):
+#
+#     await callback.message.delete()
 
-    await callback.message.delete()
+# {'client_name': '1', 'comment': '11', 'delivery': 'Доставка Яндекс такси', 'position_id': 6, 'qty': '1', 'positions': [{'position_id': 6, 'qty': '1'}]}
 
-
-@dp.callback_query_handler(Text(equals='make_order'), state=CoffeeState.menu)
+@dp.callback_query_handler(Text(equals='make_order'), state=CoffeeState.res)
 async def total_bill(callback: types.CallbackQuery, state: FSMContext):
 
+    async with state.proxy() as data:
+        dt = {'client_name': data['client_name'],
+              'comment': data['comment'],
+              'delivery': data['delivery'],
+              'positions': [{'position_id': data['position_id'],
+                             'qty': data['qty']}]}
+    await state.update_data(data=dt)
+    
     data = await state.get_data()
-#    await bot_service.add_new_order(data)
+    bot_service.add_new_order(dt)
     await callback.message.answer(f"Имя: {data['client_name']}\n"
                      f"Коментарий: {data['comment']}\n"
                      f"Доставка: {data['delivery']}\n"
-                     f"Позиция: {data['positions']}\n")
-#                    f"Колличество: {data['qty']}")
-    await bot_service.add_new_order(data)
+                     f"Позиция: {data['position_name']}\n"
+                     f"Колличество: {data['qty']}")
+#    await bot_service.add_new_order(data)
     await callback.message.delete()
     await state.finish()
 
@@ -173,5 +194,14 @@ async def total_bill(callback: types.CallbackQuery, state: FSMContext):
 #         #         '3': 2,
 #         #         }
 #
+# [13/Jan/2023 00:03:34] "POST /order/ HTTP/1.1" 200 65
+#
+# Client matching query does not exist. через api
+#
+# ValueError: Cannot assign "<QuerySet []>": "Order.client_name" must be a "Client" instance  filter()
+#
+# {'client_name': 'r', 'comment': 'r', 'delivery': 'Доставка Яндекс такси', 'positions': 6, 'qty': 5}
+#
+# {'client_name': '1', 'comment': '11', 'delivery': 'Доставка Яндекс такси', 'position_id': 6, 'qty': '1', 'positions': [{'position_id': 6, 'qty': '1'}]}
 # -------------------------------------------------------------------------------------------------------------------
 executor.start_polling(dp, skip_updates=True, on_startup=startup)

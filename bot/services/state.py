@@ -8,4 +8,9 @@ class CoffeeState(StatesGroup):
     menu = State()
     position = State()
     qty = State()
+#    add_qty = State()
+    res = State()
+
+
+
 
