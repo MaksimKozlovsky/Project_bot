@@ -69,6 +69,7 @@ async def start_command(msg: types.Message):
 async def start_order(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(CoffeeState.client_name.state)
     await callback.message.answer('Как вас зовут')
+    await callback.message.delete()
 
 
 @dp.message_handler(state=CoffeeState.client_name)
@@ -120,33 +121,17 @@ async def display_position(callback: types.CallbackQuery, state: FSMContext):
     position_id = posit['position_id']
     position_name = posit['position_name']
 
-#    position = [{'position_id': posit['position_id']}]
-
-#     position = [
-#         {'position_id': posit['position_id'],
-# #        {'position_name': posit['position_name']},
-#          'qty': posit['qty']}
-#     ]
-
     await state.update_data(position_id=position_id, position_name=position_name)
-    await state.set_state(CoffeeState.res)
+    await state.set_state(CoffeeState.qty)
     await callback.message.answer('Введите колличество')
     await callback.message.delete()
 
 
-@dp.message_handler(state=CoffeeState.res)
+@dp.message_handler(state=CoffeeState.qty)
 async def choose_qty(msg: types.Message, state: FSMContext):
     await state.update_data(qty=int(msg.text))
 
-    # async with state.proxy() as data:
-    #     data['qty'] = msg.text
-    #
-    # async with state.proxy() as data:
-    #     positions = [{'position_id': data['position_id'],
-    #                   'qty': data['qty']}]
-    # await state.update_data(positions=positions)
-
-    await state.set_state(CoffeeState.res)
+    await state.set_state(CoffeeState.menu)
     button = types.InlineKeyboardMarkup(row_width=1)
     button .add(types.InlineKeyboardButton('Добавить в заказ', callback_data='menu'))
     button .add(types.InlineKeyboardButton('Сформировать заказ', callback_data='make_order'))
@@ -154,14 +139,7 @@ async def choose_qty(msg: types.Message, state: FSMContext):
     await msg.answer('Добавить или Сформировать', reply_markup=button)
 
 
-# @dp.callback_query_handler(Text(contains='menu'), state=CoffeeState.menu)
-# async def add_position(callback: types.CallbackQuery, state: FSMContext):
-#
-#     await callback.message.delete()
-
-# {'client_name': '1', 'comment': '11', 'delivery': 'Доставка Яндекс такси', 'position_id': 6, 'qty': '1', 'positions': [{'position_id': 6, 'qty': '1'}]}
-
-@dp.callback_query_handler(Text(equals='make_order'), state=CoffeeState.res)
+@dp.callback_query_handler(Text(equals='make_order'), state=CoffeeState.menu)
 async def total_bill(callback: types.CallbackQuery, state: FSMContext):
 
     async with state.proxy() as data:
@@ -179,29 +157,19 @@ async def total_bill(callback: types.CallbackQuery, state: FSMContext):
                      f"Доставка: {data['delivery']}\n"
                      f"Позиция: {data['position_name']}\n"
                      f"Колличество: {data['qty']}")
-#    await bot_service.add_new_order(data)
     await callback.message.delete()
     await state.finish()
 
 # ----------------------------- отдача -------------------------------------------------------------
 # {
-#         #     "client_name": "123",
-#         #     "comment": "weqewqeq",
-#         #     "delivery": "eqweqwew",
+#         #     "client_name": " ",
+#         #     "comment": " ",
+#         #     "delivery": " ",
 #         #     "positions": [
-#         #         {'Americano': 1
-#         #         '2': 3,
-#         #         '3': 2,
+#         #         {'position_id': 1
+#         #          'qty': 3,
 #         #         }
 #
-# [13/Jan/2023 00:03:34] "POST /order/ HTTP/1.1" 200 65
-#
-# Client matching query does not exist. через api
-#
-# ValueError: Cannot assign "<QuerySet []>": "Order.client_name" must be a "Client" instance  filter()
-#
-# {'client_name': 'r', 'comment': 'r', 'delivery': 'Доставка Яндекс такси', 'positions': 6, 'qty': 5}
-#
-# {'client_name': '1', 'comment': '11', 'delivery': 'Доставка Яндекс такси', 'position_id': 6, 'qty': '1', 'positions': [{'position_id': 6, 'qty': '1'}]}
+# {'client_name': '1', 'comment': '11', 'delivery': 'Доставка Яндекс такси', 'positions': [{'position_id': 6, 'qty': '1'}]}
 # -------------------------------------------------------------------------------------------------------------------
 executor.start_polling(dp, skip_updates=True, on_startup=startup)

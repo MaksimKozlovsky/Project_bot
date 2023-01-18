@@ -10,7 +10,3 @@ class CoffeeState(StatesGroup):
     qty = State()
 #    add_qty = State()
     res = State()
-
-
-
-
