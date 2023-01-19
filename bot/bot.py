@@ -33,15 +33,12 @@ async def startup(_):
 @dp.message_handler(state='*', commands='stop')
 @dp.message_handler(Text(equals='отмена', ignore_case=True), state='*')
 async def cancel_handler(message: types.Message, state: FSMContext):
-    """
-    Allow user to cancel any action
-    """
+
     current_state = await state.get_state()
     if current_state is None:
         return
 
     logging.info('Cancelling state %r', current_state)
-    # Cancel state and inform user about it
     await state.finish()
 
 
@@ -89,6 +86,14 @@ async def get_comment(msg: types.Message, state: FSMContext):
     await msg.answer("Выберите способ доставки", reply_markup=button)
 
 
+@dp.message_handler(lambda msg: msg.text not in ["Самовынос",
+                                                 "Доставка в бизнес-центре",
+                                                 "Доставка Яндекс такси"], state=CoffeeState.delivery)
+async def process_gender_invalid(msg: types.Message):
+
+    return await msg.reply("Так не получится. Выберите из доступных вариантов.")
+
+
 @dp.message_handler(state=CoffeeState.delivery)
 async def get_delivery(msg: types.Message, state: FSMContext):
     await state.update_data(delivery=msg.text)
@@ -120,11 +125,24 @@ async def display_position(callback: types.CallbackQuery, state: FSMContext):
 
     position_id = posit['position_id']
     position_name = posit['position_name']
+    position_amount = posit['price']
 
-    await state.update_data(position_id=position_id, position_name=position_name)
+    await state.update_data(position_id=position_id, position_name=position_name, position_amount=position_amount)
     await state.set_state(CoffeeState.qty)
-    await callback.message.answer('Введите колличество')
+    await callback.message.answer('Введите количество')
     await callback.message.delete()
+
+
+@dp.message_handler(lambda msg: not msg.text.isdigit(), state=CoffeeState.qty)
+async def process_qty_invalid(message: types.Message):
+
+    return await message.reply("Количесто должно быть числом.\nВведите количество (только цифры)")
+
+
+@dp.message_handler(lambda msg: msg.text not in ['1', '2', '3', '4', '5'], state=CoffeeState.qty)
+async def process_quantity_invalid(message: types.Message):
+
+    return await message.reply("Вы уверены?\nВведите реальное количество")
 
 
 @dp.message_handler(state=CoffeeState.qty)
@@ -133,10 +151,16 @@ async def choose_qty(msg: types.Message, state: FSMContext):
 
     await state.set_state(CoffeeState.menu)
     button = types.InlineKeyboardMarkup(row_width=1)
-    button .add(types.InlineKeyboardButton('Добавить в заказ', callback_data='menu'))
+#    button .add(types.InlineKeyboardButton('Добавить в заказ', callback_data='menu'))
     button .add(types.InlineKeyboardButton('Сформировать заказ', callback_data='make_order'))
     button.add(types.InlineKeyboardButton("Вернуться в начало", callback_data="return"))
     await msg.answer('Добавить или Сформировать', reply_markup=button)
+
+
+@dp.callback_query_handler(Text(equals='menu'), state=CoffeeState.menu)
+async def total_bill(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state(CoffeeState.position)
+    await callback.message.delete()
 
 
 @dp.callback_query_handler(Text(equals='make_order'), state=CoffeeState.menu)
@@ -156,11 +180,12 @@ async def total_bill(callback: types.CallbackQuery, state: FSMContext):
                      f"Коментарий: {data['comment']}\n"
                      f"Доставка: {data['delivery']}\n"
                      f"Позиция: {data['position_name']}\n"
-                     f"Колличество: {data['qty']}")
+                     f"Колличество: {data['qty']}\n"
+                     f"Итого: {float(data['position_amount']) * int(data['qty'])}")
     await callback.message.delete()
     await state.finish()
 
-# ----------------------------- отдача -------------------------------------------------------------
+# ----------------------------- отдача на сервер -------------------------------------------------------------
 # {
 #         #     "client_name": " ",
 #         #     "comment": " ",
@@ -170,6 +195,18 @@ async def total_bill(callback: types.CallbackQuery, state: FSMContext):
 #         #          'qty': 3,
 #         #         }
 #
+# ------------------------- отдача клиенту -------------------------------------------------------------------------
+#
+# {
+#         #     "Имя": " ",
+#         #     "Коментарий": " ",
+#         #     "Доставка": " ",
+#         #     "Позиция": " ",
+#         #     "Колличество": " ",
+#         #     "Итого': " "
+#         #         }
+#
+# -------------------------------------------------------------------------------------------------------------------
 # {'client_name': '1', 'comment': '11', 'delivery': 'Доставка Яндекс такси', 'positions': [{'position_id': 6, 'qty': '1'}]}
 # -------------------------------------------------------------------------------------------------------------------
 executor.start_polling(dp, skip_updates=True, on_startup=startup)
