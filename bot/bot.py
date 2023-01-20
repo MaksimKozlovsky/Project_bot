@@ -150,8 +150,19 @@ async def choose_qty(msg: types.Message, state: FSMContext):
     await state.update_data(qty=int(msg.text))
 
     await state.set_state(CoffeeState.menu)
+
+    async with state.proxy() as data:
+        list_dt = []
+        sd = {'position_id': data['position_id'],
+              'qty': data['qty']}
+
+        list_dt.append(sd)
+
+        print(list_dt)
+    await state.update_data(list_dt=list_dt)
+    print(list_dt)
     button = types.InlineKeyboardMarkup(row_width=1)
-#    button .add(types.InlineKeyboardButton('Добавить в заказ', callback_data='menu'))
+    button .add(types.InlineKeyboardButton('Добавить в заказ', callback_data='menu'))
     button .add(types.InlineKeyboardButton('Сформировать заказ', callback_data='make_order'))
     button.add(types.InlineKeyboardButton("Вернуться в начало", callback_data="return"))
     await msg.answer('Добавить или Сформировать', reply_markup=button)
@@ -167,14 +178,13 @@ async def total_bill(callback: types.CallbackQuery, state: FSMContext):
 async def total_bill(callback: types.CallbackQuery, state: FSMContext):
 
     async with state.proxy() as data:
+
         dt = {'client_name': data['client_name'],
               'comment': data['comment'],
               'delivery': data['delivery'],
-              'positions': [{'position_id': data['position_id'],
-                             'qty': data['qty']}]}
+              'positions': data['list_dt']}
     await state.update_data(data=dt)
     
-    data = await state.get_data()
     bot_service.add_new_order(dt)
     await callback.message.answer(f"Имя: {data['client_name']}\n"
                      f"Коментарий: {data['comment']}\n"
@@ -185,6 +195,8 @@ async def total_bill(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await state.finish()
 
+# await state.reset_state(with_data=False)
+
 # ----------------------------- отдача на сервер -------------------------------------------------------------
 # {
 #         #     "client_name": " ",
@@ -194,7 +206,8 @@ async def total_bill(callback: types.CallbackQuery, state: FSMContext):
 #         #         {'position_id': 1
 #         #          'qty': 3,
 #         #         }
-#
+#                   ]
+#}
 # ------------------------- отдача клиенту -------------------------------------------------------------------------
 #
 # {
