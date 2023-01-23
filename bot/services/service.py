@@ -29,5 +29,10 @@ class BotService:
         response.raise_for_status()
         return response.json()
 
+    def get_history(self):
+        response = requests.get(f"{self.base_url}/get_history")
+        response.raise_for_status()
+        return response.json()
+
 
 bot_service = BotService()

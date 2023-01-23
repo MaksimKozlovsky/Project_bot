@@ -1,9 +1,9 @@
-def convert_to_text_order(json_data: dict) -> str:
-    order_html = ""
+def convert_to_text_history(json_data: dict) -> str:
+    history_html = ""
     for field, value in json_data.items():
-        order_html += f"{field.capitalize()}: {value}\n"
+        history_html += f"{field.capitalize()}: {value}\n"
 
-    return order_html
+    return history_html
 
 
 def convert_to_text_position(json_data: dict) -> str:

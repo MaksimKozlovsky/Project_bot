@@ -4,7 +4,7 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 import aiogram.utils.markdown as md
 import requests
 from aiogram.dispatcher.filters.state import StatesGroup, State
-from services.json_to_text import convert_to_text_order, convert_to_text_position
+from services.json_to_text import convert_to_text_history, convert_to_text_position
 from services.service import bot_service
 from services.state import CoffeeState
 from aiogram import Bot, Dispatcher, executor, types
@@ -52,7 +52,7 @@ async def return_handler(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer("Начальная страница")
     await callback.message.delete()
 
-# ---------------------------------------------------------------------------------------------------------------------
+# -------------------------------- start ------------------------------------------------------------------------
 
 
 @dp.message_handler(commands=['start'])
@@ -60,6 +60,22 @@ async def start_command(msg: types.Message):
     button = types.InlineKeyboardMarkup(row_width=1)
     button.add(types.InlineKeyboardButton('Сделать заказ', callback_data='order'))
     await msg.answer('Добро пожаловать в кофейню "CoffeeIn"', reply_markup=button)
+
+# ----------------------------- history ---------------------------------------------------------------------------
+
+
+@dp.message_handler(commands=['history'])
+async def start_command(msg: types.Message):
+#    data = msg.from_user.id
+    history_response = bot_service.get_history()
+
+    for itm in history_response:
+        await msg.answer(itm)
+
+    data = msg.from_user.id
+#    print(data)
+
+# -----------------------------------------------------------------------------------------------------------------
 
 
 @dp.callback_query_handler(Text(contains='order'))
@@ -162,7 +178,7 @@ async def choose_qty(msg: types.Message, state: FSMContext):
     await state.update_data(list_dt=list_dt)
     print(list_dt)
     button = types.InlineKeyboardMarkup(row_width=1)
-    button .add(types.InlineKeyboardButton('Добавить в заказ', callback_data='menu'))
+#    button .add(types.InlineKeyboardButton('Добавить в заказ', callback_data='menu'))
     button .add(types.InlineKeyboardButton('Сформировать заказ', callback_data='make_order'))
     button.add(types.InlineKeyboardButton("Вернуться в начало", callback_data="return"))
     await msg.answer('Добавить или Сформировать', reply_markup=button)
